@@ -1,0 +1,15 @@
+[general]
+name=tilesForServer
+version=master
+qgisMinimumVersion=3.10
+description=Tiles API for QGIS Server
+about=Tile Map Service and OGC Tiles API for QGIS Server
+author=3Liz
+email=info@3liz.com
+server=True
+tags=server, wmts, tiles
+changelog=changelog
+
+homepage=https://github.com/3liz/qgis-server-tiles-plugin
+tracker=https://github.com/3liz/qgis-server-tiles-plugin/issues
+repository=https://github.com/3liz/qgis-server-tiles-plugin
