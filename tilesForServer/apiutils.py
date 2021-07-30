@@ -118,7 +118,7 @@ class RequestHandler:
                         error    = { "message": self._reason }))
 
         if status_code > 300:
-            QgsMessageLog.logMessage(f"Returned HTTP Error {status_code}: {self._reason}" ,"tilesApi",Qgis.Critical)
+            QgsMessageLog.logMessage(f"Returned HTTP Error {status_code}: {self._reason}" , "tilesApi",Qgis.Critical)
 
         if not self._finished:
             self.finish()
@@ -169,12 +169,13 @@ class RequestHandler:
         except Exception as e:
             if self._finished:
                 # Nothing to send, but log for debugging purpose
-                QgsMessageLog.logMessage(traceback.format_exc(),"tilesApi",Qgis.Critical)
+                QgsMessageLog.logMessage(traceback.format_exc(), "tilesApi",Qgis.Critical)
                 return
             if isinstance(e, HTTPError):
+                QgsMessageLog.logMessage(e.log_message, "tilesApi", Qgis.Critical)
                 self.send_error(e.status_code, exc_info=sys.exc_info())
             else:
-                QgsMessageLog.logMessage(traceback.format_exc(),"tilesApi", Qgis.Critical)
+                QgsMessageLog.logMessage(traceback.format_exc(), "tilesApi", Qgis.Critical)
                 self.send_error(500, exc_info=sys.exc_info())
 
 

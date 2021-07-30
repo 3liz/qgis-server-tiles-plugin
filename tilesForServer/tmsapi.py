@@ -1,3 +1,6 @@
+import os
+import tempfile
+
 from pathlib import Path
 
 from qgis.server import (
@@ -6,7 +9,19 @@ from qgis.server import (
     QgsBufferServerRequest,
     QgsServerRequest,
 )
-from qgis.core import Qgis, QgsMessageLog, QgsCoordinateTransform
+from qgis.core import (
+    Qgis,
+    QgsMessageLog,
+    QgsCoordinateTransform,
+    QgsTileXYZ,
+    QgsTileMatrix,
+    #QgsVectorTileMVTEncoder, #define SIP_NO_FILE
+    QgsVectorTileWriter,
+    QgsFeedback,
+    QgsMapLayer,
+    QgsDataSourceUri,
+)
+from qgis.PyQt.QtCore import QUrl
 
 from .apiutils import HTTPError, RequestHandler, register_api_handlers
 
@@ -37,6 +52,12 @@ class ProjectParser:
             formats.append('png')
         if project.readBoolEntry("WMTSJpegLayers", "Project")[0]:
             formats.append('jpg')
+
+        if self.support_pbf():
+            for layer in self._project.mapLayers().values():
+                if layer.type() == QgsMapLayer.VectorLayer:
+                    formats.append('pbf')
+                    break
 
         if not formats:
             return
@@ -84,6 +105,16 @@ class ProjectParser:
                 g_formats.append('png')
             if g_name in jpg_g_names:
                 g_formats.append('jpg')
+
+            if self.support_pbf():
+                for tree_layer in tree_group.findLayers():
+                    layer = tree_layer.layer
+                    if not layer:
+                        continue
+                    if layer.type() == QgsMapLayer.VectorLayer:
+                        g_formats.append('pbf')
+                        break
+
             if not g_formats:
                 continue
 
@@ -127,6 +158,11 @@ class ProjectParser:
                 l_formats.append('png')
             if layer_id in jpg_layer_ids:
                 l_formats.append('jpg')
+
+            if self.support_pbf() and \
+               layer.type() == QgsMapLayer.VectorLayer:
+                l_formats.append('pbf')
+
             if not l_formats:
                 continue
 
@@ -240,12 +276,48 @@ class ProjectParser:
             layer_rect.xMaximum(), layer_rect.yMaximum()
         ]
 
+    def tilemap_vectorlayers(self, tilemapid):
+        for info in self.tile_maps_info():
+            if tilemapid != info['id']:
+                continue
+
+            source_type = info.get('source_type')
+            source_id = info.get('source_id')
+            if source_type == 'project':
+                for layer in self._project.mapLayers().values():
+                    if layer.type() == QgsMapLayer.VectorLayer:
+                        yield layer
+            elif source_type == 'group':
+                tree_root = self._project.layerTreeRoot()
+                tree_group = tree_root.findGroup(source_id)
+                if not tree_group:
+                    return
+                for tree_layer in tree_group.findLayers():
+                    layer = tree_layer.layer
+                    if not layer:
+                        continue
+                    if layer.type() == QgsMapLayer.VectorLayer:
+                        yield layer
+            elif source_type == 'layer':
+                layer = self._project.mapLayer(source_id)
+                if not layer:
+                    return
+                if layer.type() == QgsMapLayer.VectorLayer:
+                    yield layer
+
     def mimetypeFromExtension(self, extension):
         if extension == 'png':
             return 'image/png'
-        elif extension == 'jpg':
+        elif extension in ('jpg', 'jpeg'):
             return 'image/jpeg'
+
+        if self.support_pbf and extension == 'pbf':
+            return 'application/x-protobuf'
+
         return ''
+
+    def support_pbf(self):
+        return Qgis.QGIS_VERSION_INT >= 31400
 
 
 class LandingPage(RequestHandler, ProjectParser):
@@ -307,24 +379,77 @@ class TileMapContent(RequestHandler, ProjectParser):
         project = self._context.project()
 
         mimetype = self.mimetypeFromExtension(extension)
-        parameters = {
-            "MAP": project.fileName(),
-            "SERVICE": "WMTS",
-            "VERSION": "1.0.0",
-            "REQUEST": "GetTile",
-            "LAYER": tilemapid,
-            "STYLE": "",
-            "TILEMATRIXSET": "EPSG:3857",
-            "TILEMATRIX": tilematrixid,
-            "TILEROW": tilerowid,
-            "TILECOL": tilecolid,
-            "FORMAT": mimetype,
-        }
-        qs = "?" + "&".join("%s=%s" % item for item in parameters.items())
-        req = QgsBufferServerRequest(qs, QgsServerRequest.GetMethod, {}, None)
-        service = self._srv_iface.serviceRegistry().getService('WMTS', '1.0.0')
-        service.executeRequest(req, self._response, project );
-        self._finished = True
+        if not mimetype:
+            raise HTTPError(404, 'Extension unknown')
+
+        if self.support_pbf and extension == 'pbf':
+            tile = QgsTileXYZ(int(tilecolid), int(tilerowid), int(tilematrixid))
+
+            # QgsVectorTileMVTEncoder is not defined in SIP
+            # we need to use QgsVectorTileWriter to create the VectorTile
+            # encoder = QgsVectorTileMVTEncoder(tile)
+
+            tilematrix = QgsTileMatrix.fromWebMercator(tile.zoomLevel())
+            tile_extent = tilematrix.tileExtent(tile);
+
+            xform_context = self._project.transformContext()
+            # encoder.setTransformContext(xform_context)
+
+            # feedback = QgsFeedback()
+            layers = []
+            for layer in self.tilemap_vectorlayers(tilemapid):
+                #encoder.addLayer(layer, feedback, '', layer.name())
+                layers.append(QgsVectorTileWriter.Layer(layer))
+
+            #tileData = encoder.encode()
+            vt_writer = QgsVectorTileWriter()
+            vt_writer.setExtent(tile_extent)
+            vt_writer.setMaxZoom(tile.zoomLevel())
+            vt_writer.setMinZoom(tile.zoomLevel())
+            vt_writer.setLayers(layers)
+
+            tmp_dir = tempfile.gettempdir()
+            ds = QgsDataSourceUri()
+            ds.setParam("type", "xyz" )
+            ds.setParam("url", QUrl.fromLocalFile(tmp_dir).toString() + '/{z}-{x}-{y}.pbf' )
+
+            vt_writer.setDestinationUri(bytes(ds.encodedUri()).decode())
+            if not vt_writer.writeTiles():
+                raise HTTPError(500, vt_writer.errorMessage())
+
+            pbf_path = tmp_dir+'/{z}-{x}-{y}.pbf'.format(**{
+                'z': tilematrixid,
+                'x': tilecolid,
+                'y': tilerowid,
+            })
+            if not os.path.exists(pbf_path):
+                raise HTTPError(500, 'Vector Tile not generated')
+
+            self.set_header('Content-Type', mimetype)
+            #self._response.write(tileData)
+            with open(pbf_path, 'rb+') as pbf:
+                self._response.write(pbf.read())
+            os.remove(pbf_path)
+            self.finish()
+        else:
+            parameters = {
+                "MAP": project.fileName(),
+                "SERVICE": "WMTS",
+                "VERSION": "1.0.0",
+                "REQUEST": "GetTile",
+                "LAYER": tilemapid,
+                "STYLE": "",
+                "TILEMATRIXSET": "EPSG:3857",
+                "TILEMATRIX": tilematrixid,
+                "TILEROW": tilerowid,
+                "TILECOL": tilecolid,
+                "FORMAT": mimetype,
+            }
+            qs = "?" + "&".join("%s=%s" % item for item in parameters.items())
+            req = QgsBufferServerRequest(qs, QgsServerRequest.GetMethod, {}, None)
+            service = self._srv_iface.serviceRegistry().getService('WMTS', '1.0.0')
+            service.executeRequest(req, self._response, project );
+            self._finished = True
 
 
 def init_tms_api(serverIface) -> None:

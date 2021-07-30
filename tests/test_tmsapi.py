@@ -6,7 +6,7 @@ from shutil import rmtree
 
 import lxml.etree
 
-from qgis.core import QgsProject
+from qgis.core import QgsProject, Qgis
 
 LOGGER = logging.getLogger('server')
 
@@ -65,19 +65,25 @@ def test_tmsapi_landingpage(client):
 
     assert 'tileMaps' in json_content
     assert len(json_content['tileMaps']) == 1
-    assert 'id' in json_content['tileMaps'][0]
-    assert json_content['tileMaps'][0]['id'] == 'france_parts'
-    assert 'title' in json_content['tileMaps'][0]
-    assert json_content['tileMaps'][0]['title'] == 'france_parts'
-    assert 'abstract' in json_content['tileMaps'][0]
-    assert 'formats' in json_content['tileMaps'][0]
-    assert len(json_content['tileMaps'][0]['formats']) == 1
-    assert json_content['tileMaps'][0]['formats'][0] == 'png'
-    assert 'links' in json_content['tileMaps'][0]
-    assert len(json_content['tileMaps'][0]['links']) == 1
+    tile_map = json_content['tileMaps'][0]
+    assert 'id' in tile_map
+    assert tile_map['id'] == 'france_parts'
+    assert 'title' in tile_map
+    assert tile_map['title'] == 'france_parts'
+    assert 'abstract' in tile_map
+    assert 'formats' in tile_map
+    if Qgis.QGIS_VERSION_INT >= 31400:
+        assert len(tile_map['formats']) == 2
+    else:
+        assert len(tile_map['formats']) == 1
+    assert 'png' in tile_map['formats']
+    if Qgis.QGIS_VERSION_INT >= 31400:
+        assert 'pbf' in tile_map['formats']
+    assert 'links' in tile_map
+    assert len(tile_map['links']) == 1
 
-    assert 'source_id' not in json_content['tileMaps'][0]
-    assert 'source_type' not in json_content['tileMaps'][0]
+    assert 'source_id' not in tile_map
+    assert 'source_type' not in tile_map
 
     assert 'links' in json_content
     assert len(json_content['links']) == 0
@@ -130,11 +136,19 @@ def test_tmsapi_tilemapinfo(client):
     assert 'abstract' in json_content
     assert 'bbox' in json_content
     assert 'formats' in json_content
-    assert len(json_content['formats']) == 1
+    if Qgis.QGIS_VERSION_INT >= 31400:
+        assert len(json_content['formats']) == 2
+    else:
+        assert len(json_content['formats']) == 1
     assert 'extension' in json_content['formats'][0]
     assert json_content['formats'][0]['extension'] == 'png'
     assert 'mimetype' in json_content['formats'][0]
     assert json_content['formats'][0]['mimetype'] == 'image/png'
+    if Qgis.QGIS_VERSION_INT >= 31400:
+        assert 'extension' in json_content['formats'][1]
+        assert json_content['formats'][1]['extension'] == 'pbf'
+        assert 'mimetype' in json_content['formats'][1]
+        assert json_content['formats'][1]['mimetype'] == 'application/x-protobuf'
 
     # TMS API request - tilemapid unknwon
     qs = "/tms/tilemaps/unknwon?MAP=%s" % project.fileName()
@@ -166,7 +180,14 @@ def test_tmsapi_tilemapcontent(client):
     rv = client.get(qs)
     assert rv.status_code == 200
     assert rv.headers.get('Content-Type',"").startswith('image/png')
+    assert len(rv.content) > 0
 
+    if Qgis.QGIS_VERSION_INT >= 31400:
+        qs = "/tms/tilemaps/france_parts/0/0/0.pbf?MAP=%s" % project.fileName()
+        rv = client.get(qs)
+        assert rv.status_code == 200
+        assert rv.headers.get('Content-Type',"").startswith('application/x-protobuf')
+        assert len(rv.content) > 0
 
     # TMS API request - No project
     qs = "/tms/tilemaps/france_parts/0/0/0.png"
