@@ -300,17 +300,8 @@ class TileMapContent(RequestHandler, ProjectParser):
     def initialize(self, srv_iface, **kwargs ) -> None:
         """ override
         """
+        super().initialize(**kwargs)
         self._srv_iface = srv_iface
-        self._project_needed = True
-
-    def prepare(self, **values):
-        """
-        """
-        QgsMessageLog.logMessage(f"Values %s" % ', '.join(['%s = %s' % (k, v) for k, v in values.items()]) ,"tilesApi",Qgis.Warning)
-
-        if self._project_needed and not self._project:
-            raise HTTPError(500, 'Project file error. For Tiles API, please provide a MAP parameter pointing to a valid QGIS project file')
-
 
     def get(self, tilemapid, tilematrixid, tilecolid, tilerowid, extension):
         project = self._context.project()

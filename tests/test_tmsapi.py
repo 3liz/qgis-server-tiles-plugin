@@ -166,3 +166,10 @@ def test_tmsapi_tilemapcontent(client):
     rv = client.get(qs)
     assert rv.status_code == 200
     assert rv.headers.get('Content-Type',"").startswith('image/png')
+
+
+    # TMS API request - No project
+    qs = "/tms/tilemaps/france_parts/0/0/0.png"
+    rv = client.get(qs)
+    assert rv.status_code == 500
+    assert rv.headers.get('Content-Type',"").startswith('application/json')
