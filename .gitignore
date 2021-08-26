@@ -2,29 +2,20 @@
 .idea/
 
 # Python
+.cache
+.local
 *.pyc
 .venv
 venv
-
-# QGIS-Plugin-CI
-wmtsCacheServer.*.zip
-
-.DS_Store
-
-.cache
-.local
-
-__output__
-__wmts_cache__
-
-factory.manifest
-
 *.egg-info
-
-*~
-
-*-shm
-*-wal
-
 build
 dist
+
+# QGIS-Plugin-CI
+tilesForServer.*.zip
+
+# OS
+.DS_Store
+
+# Temp files
+*~
