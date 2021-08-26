@@ -1,7 +1,8 @@
 import os
 import tempfile
 
-from qgis.core import (  # QgsVectorTileMVTEncoder, #define SIP_NO_FILE
+from qgis.core import (
+    # QgsVectorTileMVTEncoder, #define SIP_NO_FILE
     Qgis,
     QgsCoordinateTransform,
     QgsDataSourceUri,

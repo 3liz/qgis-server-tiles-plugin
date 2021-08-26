@@ -62,12 +62,12 @@ jobs:
           -u $(id -u)
           -v ${GITHUB_WORKSPACE}/.cache:/.cache
           -e PIP_CACHE_DIR=/.cache
-          -w /src/test/server
+          -w /src
           -e PYTEST_ADDOPTS=""
           -v ${GITHUB_WORKSPACE}:/src
           -v ${GITHUB_WORKSPACE}/.local:/.local
           3liz/qgis-platform:3.16
-          ./run-tests.sh
+          ./tests/run-tests.sh
 
   release:
     needs: [test-server]
