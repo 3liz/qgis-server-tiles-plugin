@@ -5,16 +5,15 @@
     author: David Marteau (3liz)
     Copyright: (C) 2019 3Liz
 """
-import sys
 import json
+import sys
 import traceback
 
-
-from pathlib import Path
 from http.client import responses as http_responses
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple, Type, Union
 
-from typing import Any, Optional, Union, Tuple, Type, List, Dict
-
+from qgis.core import Qgis, QgsMessageLog
 from qgis.PyQt.QtCore import QRegularExpression, QUrl
 from qgis.server import (
     QgsServerOgcApi,
@@ -22,7 +21,6 @@ from qgis.server import (
     QgsServerRequest,
 )
 
-from qgis.core import Qgis, QgsMessageLog
 
 class HTTPError(Exception):
 

@@ -1,21 +1,13 @@
-""" QGIS server plugin - Tile Map Service and OGC Tiles API for QGIS Server
-
-    author: René-Luc DHONT (3liz)
-    Copyright: (C) 2021 3Liz
-"""
+__copyright__ = 'Copyright 2021, 3Liz'
+__license__ = 'GPL version 3'
+__email__ = 'info@3liz.org'
 
 from qgis.server import QgsServerInterface
 
-from .tmsapi import init_tms_api
+from tilesForServer.tmsapi import init_tms_api
 
 
-class tilesForServer:
-    """ Plugin for QGIS server
-    """
+class TilesForServer:
 
-    def __init__(self, serverIface: 'QgsServerInterface') -> None:
-        # save reference to the QGIS interface
-        self.serverIface = serverIface
-
-        # Cache Manager API
-        init_tms_api(serverIface)
+    def __init__(self, server_iface: QgsServerInterface) -> None:
+        init_tms_api(server_iface)

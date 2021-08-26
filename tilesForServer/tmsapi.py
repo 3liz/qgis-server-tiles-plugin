@@ -1,30 +1,30 @@
 import os
 import tempfile
 
-from pathlib import Path
-
-from qgis.server import (
-    QgsServerProjectUtils,
-    QgsServerOgcApi,
-    QgsBufferServerRequest,
-    QgsServerRequest,
-)
-from qgis.core import (
+from qgis.core import (  # QgsVectorTileMVTEncoder, #define SIP_NO_FILE
     Qgis,
-    QgsMessageLog,
     QgsCoordinateTransform,
-    QgsTileXYZ,
-    QgsTileMatrix,
-    #QgsVectorTileMVTEncoder, #define SIP_NO_FILE
-    QgsVectorTileWriter,
+    QgsDataSourceUri,
     QgsFeedback,
     QgsMapLayer,
-    QgsDataSourceUri,
+    QgsMessageLog,
+    QgsTileMatrix,
+    QgsTileXYZ,
+    QgsVectorTileWriter,
 )
 from qgis.PyQt.QtCore import QUrl
+from qgis.server import (
+    QgsBufferServerRequest,
+    QgsServerOgcApi,
+    QgsServerProjectUtils,
+    QgsServerRequest,
+)
 
-from .apiutils import HTTPError, RequestHandler, register_api_handlers
-
+from tilesForServer.apiutils import (
+    HTTPError,
+    RequestHandler,
+    register_api_handlers,
+)
 
 #
 # WMTS API Handlers
@@ -452,10 +452,10 @@ class TileMapContent(RequestHandler, ProjectParser):
             self._finished = True
 
 
-def init_tms_api(serverIface) -> None:
+def init_tms_api(server_iface) -> None:
     """ Initialize the Tile Map Server API
     """
-    kwargs = dict(srv_iface = serverIface)
+    kwargs = dict(srv_iface=server_iface)
 
     tilemapid = r"tilemaps/(?P<tilemapid>[^/?]+)"
 
@@ -465,4 +465,4 @@ def init_tms_api(serverIface) -> None:
         (rf"/?", LandingPage, kwargs),
     ]
 
-    register_api_handlers(serverIface, '/tms', 'TileMapService', handlers)
+    register_api_handlers(server_iface, '/tms', 'TileMapService', handlers)

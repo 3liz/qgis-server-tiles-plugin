@@ -6,7 +6,7 @@ from shutil import rmtree
 
 import lxml.etree
 
-from qgis.core import QgsProject, Qgis
+from qgis.core import Qgis, QgsProject
 
 LOGGER = logging.getLogger('server')
 

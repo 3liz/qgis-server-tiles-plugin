@@ -1,15 +1,12 @@
-""" QGIS server plugin - Tile Map Service and OGC Tiles API for QGIS Server
-
-    author: René-Luc DHONT (3liz)
-    Copyright: (C) 2021 3Liz
-"""
+__copyright__ = 'Copyright 2021, 3Liz'
+__license__ = 'GPL version 3'
+__email__ = 'info@3liz.org'
 
 from qgis.server import QgsServerInterface
 
 
-def serverClassFactory(serverIface: 'QgsServerInterface'):
+def serverClassFactory(server_iface: QgsServerInterface):
     """ Plugin entry point
     """
-    # save reference to the QGIS interface
-    from .tilesForServer import tilesForServer
-    return tilesForServer(serverIface)
+    from tilesForServer.tilesForServer import TilesForServer
+    return TilesForServer(server_iface)
