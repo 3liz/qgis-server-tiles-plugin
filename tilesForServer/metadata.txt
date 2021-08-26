@@ -1,7 +1,7 @@
 [general]
 name=tilesForServer
 version=master
-qgisMinimumVersion=3.10
+qgisMinimumVersion=3.14
 description=Tiles API for QGIS Server
 about=Tile Map Service and OGC Tiles API for QGIS Server
 author=3Liz
