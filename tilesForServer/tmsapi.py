@@ -341,7 +341,7 @@ class LandingPage(RequestHandler, ProjectParser):
                 del extra['source_id']
                 del extra['source_type']
                 extra['links'] = [{
-                        'href': self.href(f"/tilemaps/{tile_map_id})", QgsServerOgcApi.contentTypeToExtension(QgsServerOgcApi.JSON)),
+                        'href': self.href(f"/{tile_map_id})", QgsServerOgcApi.contentTypeToExtension(QgsServerOgcApi.JSON)),
                         "rel": QgsServerOgcApi.relToString(QgsServerOgcApi.item),
                         "type": QgsServerOgcApi.mimeType(QgsServerOgcApi.JSON),
                         "title": "Cache collection",
@@ -458,7 +458,7 @@ def init_tms_api(server_iface) -> None:
     """
     kwargs = dict(srv_iface=server_iface)
 
-    tilemapid = r"tilemaps/(?P<tilemapid>[^/?]+)"
+    tilemapid = r"(?P<tilemapid>(?!tms)[^/?]+)"
 
     handlers = [
         (rf"/{tilemapid}/(?P<tilematrixid>\d+)/(?P<tilecolid>\d+)/(?P<tilerowid>\d+)\.(?P<extension>[^/?]+)/?", TileMapContent,  kwargs),

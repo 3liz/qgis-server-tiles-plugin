@@ -81,6 +81,11 @@ def test_tmsapi_landingpage(client):
         assert 'pbf' in tile_map['formats']
     assert 'links' in tile_map
     assert len(tile_map['links']) == 1
+    assert 'title' in tile_map['links'][0]
+    assert 'type' in tile_map['links'][0]
+    assert 'rel' in tile_map['links'][0]
+    assert 'href' in tile_map['links'][0]
+    assert '/tms/france_parts' in tile_map['links'][0]['href']
 
     assert 'source_id' not in tile_map
     assert 'source_type' not in tile_map
@@ -113,7 +118,7 @@ def test_tmsapi_landingpage(client):
 
 def test_tmsapi_tilemapinfo(client):
     """ Test the TMS API -Landing page
-        /tms/tilemaps/{tilemapid}?
+        /tms/{tilemapid}?
     """
     plugin = client.getplugin('tilesForServer')
     assert plugin is not None
@@ -123,7 +128,7 @@ def test_tmsapi_tilemapinfo(client):
     project.setFileName(client.getprojectpath("france_parts.qgs").strpath)
 
     # TMS API requests
-    qs = "/tms/tilemaps/france_parts?MAP=%s" % project.fileName()
+    qs = "/tms/france_parts?MAP=%s" % project.fileName()
     rv = client.get(qs)
     assert rv.status_code == 200
     assert rv.headers.get('Content-Type',"").startswith('application/json')
@@ -151,7 +156,7 @@ def test_tmsapi_tilemapinfo(client):
         assert json_content['formats'][1]['mimetype'] == 'application/x-protobuf'
 
     # TMS API request - tilemapid unknwon
-    qs = "/tms/tilemaps/unknwon?MAP=%s" % project.fileName()
+    qs = "/tms/unknwon?MAP=%s" % project.fileName()
     rv = client.get(qs)
     assert rv.status_code == 404
     assert rv.headers.get('Content-Type',"").startswith('application/json')
@@ -166,7 +171,7 @@ def test_tmsapi_tilemapinfo(client):
 
 def test_tmsapi_tilemapcontent(client):
     """ Test the TMS API -Landing page
-        /tms/tilemaps/{tilemapid}/{tilematrixid}/{tilecolid}/{tilerowid}?
+        /tms/{tilemapid}/{tilematrixid}/{tilecolid}/{tilerowid}?
     """
     plugin = client.getplugin('tilesForServer')
     assert plugin is not None
@@ -176,21 +181,21 @@ def test_tmsapi_tilemapcontent(client):
     project.setFileName(client.getprojectpath("france_parts.qgs").strpath)
 
     # TMS API requests
-    qs = "/tms/tilemaps/france_parts/0/0/0.png?MAP=%s" % project.fileName()
+    qs = "/tms/france_parts/0/0/0.png?MAP=%s" % project.fileName()
     rv = client.get(qs)
     assert rv.status_code == 200
     assert rv.headers.get('Content-Type',"").startswith('image/png')
     assert len(rv.content) > 0
 
     if Qgis.QGIS_VERSION_INT >= 31400:
-        qs = "/tms/tilemaps/france_parts/0/0/0.pbf?MAP=%s" % project.fileName()
+        qs = "/tms/france_parts/0/0/0.pbf?MAP=%s" % project.fileName()
         rv = client.get(qs)
         assert rv.status_code == 200
         assert rv.headers.get('Content-Type',"").startswith('application/x-protobuf')
         assert len(rv.content) > 0
 
     # TMS API request - No project
-    qs = "/tms/tilemaps/france_parts/0/0/0.png"
+    qs = "/tms/france_parts/0/0/0.png"
     rv = client.get(qs)
     assert rv.status_code == 500
     assert rv.headers.get('Content-Type',"").startswith('application/json')
