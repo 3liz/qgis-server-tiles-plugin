@@ -213,10 +213,10 @@ class RequestHandlerDelegate(QgsServerOgcApiHandler):
         return f"Tiles {self._name}"
 
     def description(self):
-        return f"Tiles {self._name }"
+        return f"Tiles {self._name}"
 
     def linkTitle(self):
-        return f"Tiles {self._name }"
+        return f"Tiles {self._name}"
 
     def templatePath(self, context):
         # No templates!
