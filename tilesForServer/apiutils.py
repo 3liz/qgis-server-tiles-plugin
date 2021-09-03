@@ -191,14 +191,24 @@ class RequestHandlerDelegate(QgsServerOgcApiHandler):
                  kwargs: Dict={}):
 
         super().__init__()
+        # Defined default content types because
+        # QgsServerOgcApiHandler::contentTypes not available in Python bindings
+        self._content_types = [QgsServerOgcApi.JSON, QgsServerOgcApi.HTML]
         if content_types:
             self.setContentTypes(content_types)
+            self._content_types = content_types
         self._path = QRegularExpression(path)
         self._name = handler.__name__
         self._handler = handler
         self._kwargs = kwargs
 
         self.__instances.append(self)
+
+    def contentTypes(self):
+        """ Returns the list of content types this handler can serve, default to JSON and HTML.
+            QgsServerOgcApiHandler::contentTypes not available in Python bindings
+        """
+        return self._content_types
 
     def path(self):
         return self._path
