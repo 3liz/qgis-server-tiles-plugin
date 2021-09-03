@@ -68,7 +68,22 @@ class RequestHandler:
         """ Returns an URL to self, to be used for links to the current resources
             and as a base for constructing links to sub-resources
         """
-        return self._parent.href(self._context,path,extension)
+        return self._parent.href(self._context, path, extension)
+
+    def links(self) -> List[str]:
+        """Returns the self and alternate links for the given request
+           QgsServerOgcApiHandler::links not available in Python bindings
+        """
+        links = list()
+        current_ct = self._parent.contentTypeFromRequest(self._request)
+        for ct in self._parent.contentTypes():
+            links.append({
+                'href': self.href('', QgsServerOgcApi.contentTypeToExtension(ct) if ct != QgsServerOgcApi.JSON else ''),
+                'rel': QgsServerOgcApi.relToString(QgsServerOgcApi.self if ct == current_ct else QgsServerOgcApi.alternate),
+                "type": QgsServerOgcApi.mimeType(ct),
+                "title": self._parent.linkTitle()+' as '+QgsServerOgcApi.contentTypeToString(ct),
+            })
+        return links
 
     def finish(self, chunk: Optional[Union[str, bytes, dict]] = None) -> None:
         """ Terminate the request
