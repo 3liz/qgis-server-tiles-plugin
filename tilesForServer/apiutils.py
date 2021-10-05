@@ -1,6 +1,4 @@
-""" QGIS server plugin filter - Cache WMTS output on disk
-
-    Qgis API utils utils
+""" Qgis API utils utils
 
     author: David Marteau (3liz)
     Copyright: (C) 2019 3Liz

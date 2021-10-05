@@ -1,4 +1,6 @@
 SHELL:=bash
+.ONESHELL:
+
 #
 # tiles server plugin makefile
 #
@@ -9,7 +11,7 @@ REGISTRY_URL ?= 3liz
 REGISTRY_PREFIX=$(REGISTRY_URL)/
 
 # Qgis version flavor
-FLAVOR:=3.16
+FLAVOR:=release
 
 BECOME_USER:=$(shell id -u)
 
@@ -31,4 +33,31 @@ test:
 		-e PIP_CACHE_DIR=/.cache \
 		-e PYTEST_ADDOPTS="$(TEST_OPTS)" \
 		$(QGIS_IMAGE) ./tests/run-tests.sh
+
+BECOME_USER:=$(shell id -u)
+BECOME_GROUP:=$(shell id -g)
+CACHEDIR:=.wmts_cache
+
+PROJECT_NAME:=qgis_server_tiles
+
+run: env
+	cd tests && docker-compose -p $(PROJECT_NAME) up -V --force-recreate
+
+stop:
+	cd tests && docker-compose -p $(PROJECT_NAME) down -v --remove-orphans
+
+.PHONY: env
+
+env:
+	@echo "Creating environment file for docker-compose"
+	@mkdir tests/$(CACHEDIR)
+	@cat <<-EOF > tests/.env
+		WORKDIR=$(shell pwd)
+		CACHEDIR=$(CACHEDIR)
+		QGIS_VERSION=$(FLAVOR)
+		QGIS_USER_ID=$(BECOME_USER)
+		QGIS_USER_GID=$(BECOME_GROUP)
+		SERVER_HTTP_PORT=127.0.0.1:8888
+		SERVER_MANAGEMENT_PORT=127.0.0.1:19876
+		EOF
 
