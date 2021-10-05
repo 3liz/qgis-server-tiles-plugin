@@ -19,3 +19,6 @@ tilesForServer.*.zip
 
 # Temp files
 *~
+
+# Pytest output files
+__output__
