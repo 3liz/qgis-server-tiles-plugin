@@ -1,12 +1,13 @@
-import os
 import tempfile
+
+from pathlib import Path
 
 from qgis.core import (
     # QgsVectorTileMVTEncoder, #define SIP_NO_FILE
     Qgis,
+    QgsCoordinateReferenceSystem,
     QgsCoordinateTransform,
     QgsDataSourceUri,
-    QgsFeedback,
     QgsMapLayer,
     QgsMessageLog,
     QgsTileMatrix,
@@ -34,8 +35,7 @@ from tilesForServer.apiutils import (
 class ProjectParser:
 
     def tile_project_info(self):
-        project = self._context.project()
-
+        project = self.project
         # The project as tiles source
         if not project.readBoolEntry("WMTSLayers", "Project")[0]:
             return
@@ -55,7 +55,7 @@ class ProjectParser:
             formats.append('jpg')
 
         if self.support_pbf():
-            for layer in self._project.mapLayers().values():
+            for layer in project.mapLayers().values():
                 if layer.type() == QgsMapLayer.VectorLayer:
                     formats.append('pbf')
                     break
@@ -65,16 +65,16 @@ class ProjectParser:
 
         # tileMap info
         yield {
-                'source_id': root_name,
-                'source_type': 'project',
-                'id': root_name,
-                'title': project.title(),
-                'abstract': project.title(),
-                'formats': formats
-              }
+            'source_id': root_name,
+            'source_type': 'project',
+            'id': root_name,
+            'title': project.title(),
+            'abstract': project.title(),
+            'formats': formats,
+        }
 
     def tile_groups_info(self):
-        project = self._context.project()
+        project = self.project
 
         # Groups as tiles source
         g_names = project.readListEntry("WMTSLayers", "Group")[0]
@@ -121,16 +121,16 @@ class ProjectParser:
 
             # tileMap info
             yield {
-                    'source_id': g_name,
-                    'source_type': 'group',
-                    'id': g_id,
-                    'title': g_title,
-                    'abstract': g_abstract,
-                    'formats': g_formats,
-                  }
+                'source_id': g_name,
+                'source_type': 'group',
+                'id': g_id,
+                'title': g_title,
+                'abstract': g_abstract,
+                'formats': g_formats,
+            }
 
     def tile_layers_info(self):
-        project = self._context.project()
+        project = self.project
 
         # Layers as tiles source
         layer_ids = project.readListEntry("WMTSLayers", "Layer")[0]
@@ -169,13 +169,13 @@ class ProjectParser:
 
             # tileMap info
             yield {
-                    'source_id': layer.id(),
-                    'source_type': 'layer',
-                    'id': l_id,
-                    'title': l_title,
-                    'abstract': layer.abstract(),
-                    'formats': l_formats,
-                  }
+                'source_id': layer.id(),
+                'source_type': 'layer',
+                'id': l_id,
+                'title': l_title,
+                'abstract': layer.abstract(),
+                'formats': l_formats,
+            }
 
     def tile_maps_info(self):
         # The project as tiles source
@@ -191,6 +191,8 @@ class ProjectParser:
             yield info
 
     def get_complete_tilemap_info(self, tilemapid):
+        """
+        """
         for info in self.tile_maps_info():
             if tilemapid != info['id']:
                 continue
@@ -208,6 +210,8 @@ class ProjectParser:
         return None
 
     def get_tilemap_bbox(self, source_type, source_id):
+        """
+        """
         bbox = None
         if source_type == 'project':
             bbox = self.get_project_bbox()
@@ -218,7 +222,10 @@ class ProjectParser:
         return bbox
 
     def get_project_bbox(self):
-        project = self._context.project()
+        """
+        """
+        project = self.project
+
         crs_dest = QgsCoordinateReferenceSystem("EPSG:3857")
         xform_context = project.transformContext()
 
@@ -232,12 +239,17 @@ class ProjectParser:
         ]
 
     def get_group_bbox(self, group_name):
-        project = self._context.project()
+        """
+        """
+        project = self.project
         crs_dest = QgsCoordinateReferenceSystem("EPSG:3857")
         xform_context = project.transformContext()
 
         group_rect = None
+
+        tree_root = project.layerTreeRoot()
         tree_group = tree_root.findGroup(group_name)
+
         for tree_layer in tree_group.findLayers():
             layer = tree_layer.layer
             if not layer:
@@ -258,7 +270,7 @@ class ProjectParser:
         ]
 
     def get_layer_bbox(self, layer_id):
-        project = self._context.project()
+        project = self.project
         crs_dest = QgsCoordinateReferenceSystem("EPSG:3857")
         xform_context = project.transformContext()
 
@@ -282,14 +294,16 @@ class ProjectParser:
             if tilemapid != info['id']:
                 continue
 
+            project = self.project
+
             source_type = info.get('source_type')
             source_id = info.get('source_id')
             if source_type == 'project':
-                for layer in self._project.mapLayers().values():
+                for layer in project.mapLayers().values():
                     if layer.type() == QgsMapLayer.VectorLayer:
                         yield layer
             elif source_type == 'group':
-                tree_root = self._project.layerTreeRoot()
+                tree_root = project.layerTreeRoot()
                 tree_group = tree_root.findGroup(source_id)
                 if not tree_group:
                     return
@@ -300,7 +314,7 @@ class ProjectParser:
                     if layer.type() == QgsMapLayer.VectorLayer:
                         yield layer
             elif source_type == 'layer':
-                layer = self._project.mapLayer(source_id)
+                layer = project.mapLayer(source_id)
                 if not layer:
                     return
                 if layer.type() == QgsMapLayer.VectorLayer:
@@ -325,7 +339,7 @@ class LandingPage(RequestHandler, ProjectParser):
     """ Project tile map listing handler
     """
     def get(self) -> None:
-        project = self._context.project()
+        project = self.project
 
         grids = project.readListEntry("WMTSGrids", "CRS")[0]
 
@@ -341,11 +355,11 @@ class LandingPage(RequestHandler, ProjectParser):
                 del extra['source_id']
                 del extra['source_type']
                 extra['links'] = [{
-                        'href': self.href(f"/{tile_map_id})", QgsServerOgcApi.contentTypeToExtension(QgsServerOgcApi.JSON)),
-                        "rel": QgsServerOgcApi.relToString(QgsServerOgcApi.item),
-                        "type": QgsServerOgcApi.mimeType(QgsServerOgcApi.JSON),
-                        "title": "Cache collection",
-                    }]
+                    'href': self.href(f"/{tile_map_id}", QgsServerOgcApi.contentTypeToExtension(QgsServerOgcApi.JSON)),
+                    "rel": QgsServerOgcApi.relToString(QgsServerOgcApi.item),
+                    "type": QgsServerOgcApi.mimeType(QgsServerOgcApi.JSON),
+                    "title": "Cache collection",
+                }]
                 yield extra
 
         data = {
@@ -360,10 +374,9 @@ class TileMapInfo(RequestHandler, ProjectParser):
     """ Tile map information handler
     """
     def get(self, tilemapid):
-        QgsMessageLog.logMessage('Tile map id: %s' % tilemapid, "tilesApi", Qgis.Warning)
         info = self.get_complete_tilemap_info(tilemapid)
         if not info :
-            raise HTTPError(404, 'Tile map not found')
+            raise HTTPError(404,f"Tile map '{tilemapid}' not found")
         self.write(info)
 
 
@@ -376,81 +389,96 @@ class TileMapContent(RequestHandler, ProjectParser):
         super().initialize(**kwargs)
         self._srv_iface = srv_iface
 
-    def get(self, tilemapid, tilematrixid, tilecolid, tilerowid, extension):
-        project = self._context.project()
+    def getVectorTile320(self, tile: QgsTileXYZ, writer: QgsVectorTileWriter) -> bytes: 
+        """ Build vector tile for qgis version <= 3.20
+        """
+        tilematrix = QgsTileMatrix.fromWebMercator(tile.zoomLevel())
+        writer.setExtent(tilematrix.tileExtent(tile))
 
+        tmp_dir = tempfile.gettempdir()
+        ds = QgsDataSourceUri()
+        ds.setParam("type", "xyz" )
+        ds.setParam("url", QUrl.fromLocalFile(tmp_dir).toString() + '/{z}-{x}-{y}.pbf' )
+
+        writer.setDestinationUri(bytes(ds.encodedUri()).decode())
+        if not writer.writeTiles():
+            raise HTTPError(500, writer.errorMessage())
+
+        pbf_path = Path(tmp_dir,f'{tile.zoomLevel()}-{tile.column()}-{tile.row()}.pbf')
+        if not pbf_path.exists():
+            raise HTTPError(500, 'Error generating vector tile')
+
+        try:
+            with pbf_path.open('rb+') as pbf:
+                return pbf.read()
+        finally:
+            pbf_path.unlink()
+
+    def _get_vector_tile(self,  tilemapid, tilematrixid, tilecolid, tilerowid) -> bytes:
+        """ Build vector tile
+        """
+        try:
+            tile = QgsTileXYZ(int(tilecolid), int(tilerowid), int(tilematrixid))
+        except ValueError as err:
+            QgsMessageLog.logMessage(f"Parameters error: {err}", "tilesApi", Qgis.Warning)
+            raise HTTPError(400, reason="Invalid parameters") from None
+
+        layers = [QgsVectorTileWriter.Layer(vl) for vl in self.tilemap_vectorlayers(tilemapid)]
+
+        writer = QgsVectorTileWriter()
+        writer.setMaxZoom(tile.zoomLevel())
+        writer.setMinZoom(tile.zoomLevel())
+        writer.setLayers(layers)
+
+        if Qgis.QGIS_VERSION_INT >= 32100:
+            data = writer.writeSingleTile(tile).data()
+        else:
+            data = self.getVectorTile320(tile,writer)
+    
+        return data
+
+    #
+    # Api method 
+    #
+    def get(self, tilemapid, tilematrixid, tilecolid, tilerowid, extension):
+        """
+        """
+        project = self.project
         mimetype = self.mimetypeFromExtension(extension)
         if not mimetype:
-            raise HTTPError(404, 'Extension unknown')
+            raise HTTPError(400, reason='Unknown extension')
 
+        self.set_header('Content-Type', mimetype)
+
+        # Build request for cache and service fallback
+        parameters = {
+            "MAP": project.fileName(),
+            "SERVICE": "WMTS",
+            "VERSION": "1.0.0",
+            "REQUEST": "GetTile",
+            "LAYER": tilemapid,
+            "STYLE": "",
+            "TILEMATRIXSET": "EPSG:3857",
+            "TILEMATRIX": tilematrixid,
+            "TILEROW": tilerowid,
+            "TILECOL": tilecolid,
+            "FORMAT": mimetype,
+        }
+
+        qs = f"?{'&'.join('%s=%s' % item for item in parameters.items())}"
+        req = QgsBufferServerRequest(qs, QgsServerRequest.GetMethod, {}, None)
+           
         if self.support_pbf and extension == 'pbf':
-            tile = QgsTileXYZ(int(tilecolid), int(tilerowid), int(tilematrixid))
-
-            # QgsVectorTileMVTEncoder is not defined in SIP
-            # we need to use QgsVectorTileWriter to create the VectorTile
-            # encoder = QgsVectorTileMVTEncoder(tile)
-
-            tilematrix = QgsTileMatrix.fromWebMercator(tile.zoomLevel())
-            tile_extent = tilematrix.tileExtent(tile);
-
-            xform_context = self._project.transformContext()
-            # encoder.setTransformContext(xform_context)
-
-            # feedback = QgsFeedback()
-            layers = []
-            for layer in self.tilemap_vectorlayers(tilemapid):
-                #encoder.addLayer(layer, feedback, '', layer.name())
-                layers.append(QgsVectorTileWriter.Layer(layer))
-
-            #tileData = encoder.encode()
-            vt_writer = QgsVectorTileWriter()
-            vt_writer.setExtent(tile_extent)
-            vt_writer.setMaxZoom(tile.zoomLevel())
-            vt_writer.setMinZoom(tile.zoomLevel())
-            vt_writer.setLayers(layers)
-
-            tmp_dir = tempfile.gettempdir()
-            ds = QgsDataSourceUri()
-            ds.setParam("type", "xyz" )
-            ds.setParam("url", QUrl.fromLocalFile(tmp_dir).toString() + '/{z}-{x}-{y}.pbf' )
-
-            vt_writer.setDestinationUri(bytes(ds.encodedUri()).decode())
-            if not vt_writer.writeTiles():
-                raise HTTPError(500, vt_writer.errorMessage())
-
-            pbf_path = tmp_dir+'/{z}-{x}-{y}.pbf'.format(**{
-                'z': tilematrixid,
-                'x': tilecolid,
-                'y': tilerowid,
-            })
-            if not os.path.exists(pbf_path):
-                raise HTTPError(500, 'Vector Tile not generated')
-
-            self.set_header('Content-Type', mimetype)
-            #self._response.write(tileData)
-            with open(pbf_path, 'rb+') as pbf:
-                self._response.write(pbf.read())
-            os.remove(pbf_path)
-            self.finish()
+            # Get tile from cache
+            iface = self.server_interface
+            data = iface.cacheManager().getCachedImage(project,req, iface.accessControls()).data()
+            if not data:
+                data = self._get_vector_tile(tilemapid, tilematrixid, tilecolid, tilerowid) 
+            self.write(data)
         else:
-            parameters = {
-                "MAP": project.fileName(),
-                "SERVICE": "WMTS",
-                "VERSION": "1.0.0",
-                "REQUEST": "GetTile",
-                "LAYER": tilemapid,
-                "STYLE": "",
-                "TILEMATRIXSET": "EPSG:3857",
-                "TILEMATRIX": tilematrixid,
-                "TILEROW": tilerowid,
-                "TILECOL": tilecolid,
-                "FORMAT": mimetype,
-            }
-            qs = "?" + "&".join("%s=%s" % item for item in parameters.items())
-            req = QgsBufferServerRequest(qs, QgsServerRequest.GetMethod, {}, None)
+            # Fallback to service
             service = self._srv_iface.serviceRegistry().getService('WMTS', '1.0.0')
-            service.executeRequest(req, self._response, project );
-            self._finished = True
+            service.executeRequest(req, self._response, project )
 
 
 def init_tms_api(server_iface) -> None:
@@ -458,12 +486,17 @@ def init_tms_api(server_iface) -> None:
     """
     kwargs = dict(srv_iface=server_iface)
 
-    tilemapid = r"(?P<tilemapid>(?!tms)[^/?]+)"
+    # Note: there is an inconsistency about how patterns are handled:
+    # selection use the path, *but* parameters extraction is done 
+    # by using the *url*: this lead to some unexpected behavior
+    #
+    # see https://github.com/qgis/QGIS/issues/45439
+    #
 
     handlers = [
-        (rf"/{tilemapid}/(?P<tilematrixid>\d+)/(?P<tilecolid>\d+)/(?P<tilerowid>\d+)\.(?P<extension>[^/?]+)/?", TileMapContent,  kwargs),
-        (rf"/{tilemapid}/?", TileMapInfo,  kwargs),
-        (rf"/?", LandingPage, kwargs),
+        (r"/tms/(?P<tilemapid>[^/]+)/(?P<tilematrixid>\d+)/(?P<tilecolid>\d+)/(?P<tilerowid>\d+)\.(?P<extension>[^/?]+)", TileMapContent,  kwargs),
+        (r"/tms/(?P<tilemapid>(?:(?!\.json)[^/\?])+)", TileMapInfo,  kwargs),
+        (r"/?", LandingPage, kwargs),
     ]
 
     register_api_handlers(server_iface, '/tms', 'TileMapService', handlers)
