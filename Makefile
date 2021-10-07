@@ -19,11 +19,11 @@ QGIS_IMAGE=$(REGISTRY_PREFIX)qgis-platform:$(FLAVOR)
 
 LOCAL_HOME ?= $(shell pwd)
 
-# Checke setup.cfg for flake8 configuration
+# Check setup.cfg for flake8 configuration
 lint:
 	@flake8
 
-test:
+test: lint
 	mkdir -p $$(pwd)/.local $(LOCAL_HOME)/.cache
 	docker run --rm --name qgis-py-server-test-$(COMMITID) -w /src \
 		-u $(BECOME_USER) \

@@ -1,10 +1,5 @@
 import json
 import logging
-import os
-
-from shutil import rmtree
-
-import lxml.etree
 
 from qgis.core import Qgis, QgsProject
 
@@ -20,12 +15,12 @@ def test_tmsapi_no_project(client):
     # TMS API request
     qs = "/tms?"
     rv = client.get(qs)
-    assert rv.status_code == 500
+    assert rv.status_code == 400
     assert rv.headers.get('Content-Type',"").startswith('application/json')
 
     json_content = json.loads(rv.content)
     assert 'httpcode' in json_content
-    assert json_content['httpcode'] == 500
+    assert json_content['httpcode'] == 400
     assert 'status' in json_content
     assert json_content['status'] == 'error'
     assert 'error' in json_content
@@ -38,7 +33,7 @@ def test_tmsapi_no_project(client):
     # TMS API request
     qs = "/tms?MAP=%s" % project.fileName()
     rv = client.get(qs)
-    assert rv.status_code == 500
+    assert rv.status_code == 400
     assert rv.headers.get('Content-Type',"").startswith('application/json')
 
 def test_tmsapi_landingpage(client):
@@ -197,5 +192,5 @@ def test_tmsapi_tilemapcontent(client):
     # TMS API request - No project
     qs = "/tms/france_parts/0/0/0.png"
     rv = client.get(qs)
-    assert rv.status_code == 500
+    assert rv.status_code == 400
     assert rv.headers.get('Content-Type',"").startswith('application/json')

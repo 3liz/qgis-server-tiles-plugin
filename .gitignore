@@ -22,3 +22,6 @@ tilesForServer.*.zip
 
 # Pytest output files
 __output__
+
+# Compose env file
+.env
