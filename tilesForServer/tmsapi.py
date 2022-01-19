@@ -475,6 +475,8 @@ class TileMapContent(RequestHandler, ProjectParser):
             if not data:
                 data = self._get_vector_tile(tilemapid, tilematrixid, tilecolid, tilerowid) 
             self.write(data)
+            # Register image in cache
+            iface.cacheManager().setCachedImage(data, project, req, iface.accessControls())
         else:
             # Fallback to service
             service = self._srv_iface.serviceRegistry().getService('WMTS', '1.0.0')
@@ -492,10 +494,9 @@ def init_tms_api(server_iface) -> None:
     #
     # see https://github.com/qgis/QGIS/issues/45439
     #
-
     handlers = [
-        (r"/tms/(?P<tilemapid>[^/]+)/(?P<tilematrixid>\d+)/(?P<tilecolid>\d+)/(?P<tilerowid>\d+)\.(?P<extension>[^/?]+)", TileMapContent,  kwargs),
-        (r"/tms/(?P<tilemapid>(?:(?!\.json)[^/\?])+)", TileMapInfo,  kwargs),
+        (r"/(?P<tilemapid>[^/]+)/(?P<tilematrixid>\d+)/(?P<tilecolid>\d+)/(?P<tilerowid>\d+)\.(?P<extension>[^/?]+)", TileMapContent,  kwargs),
+        (r"/(?P<tilemapid>(?:(?!\.json)[^/\?])+)", TileMapInfo,  kwargs),
         (r"/?", LandingPage, kwargs),
     ]
 
