@@ -41,16 +41,16 @@ CACHEDIR:=.wmts_cache
 PROJECT_NAME:=qgis_server_tiles
 
 run: env
-	cd tests && docker-compose -p $(PROJECT_NAME) up -V --force-recreate
+	cd tests && docker compose -p $(PROJECT_NAME) up -V --force-recreate
 
 stop:
-	cd tests && docker-compose -p $(PROJECT_NAME) down -v --remove-orphans
+	cd tests && docker compose -p $(PROJECT_NAME) down -v --remove-orphans
 
 .PHONY: env
 
 env:
 	@echo "Creating environment file for docker-compose"
-	@mkdir tests/$(CACHEDIR)
+	@mkdir -p tests/$(CACHEDIR)
 	@cat <<-EOF > tests/.env
 		WORKDIR=$(shell pwd)
 		CACHEDIR=$(CACHEDIR)
@@ -59,5 +59,6 @@ env:
 		QGIS_USER_GID=$(BECOME_GROUP)
 		SERVER_HTTP_PORT=127.0.0.1:8888
 		SERVER_MANAGEMENT_PORT=127.0.0.1:19876
+		REGISTRY_PREFIX=${REGISTRY_PREFIX}
 		EOF
 

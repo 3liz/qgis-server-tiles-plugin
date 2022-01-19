@@ -1,7 +1,7 @@
 version: '3.8'
 services:
     qgis-server:
-        image: 3liz/qgis-map-server:${QGIS_VERSION}
+        image: ${REGISTRY_PREFIX}qgis-map-server:${QGIS_VERSION}
         environment:
             QGSRV_CACHE_ROOTDIR: /srv/projects
             QGSRV_LOGGING_LEVEL: DEBUG

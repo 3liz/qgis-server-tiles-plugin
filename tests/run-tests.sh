@@ -2,11 +2,16 @@
 
 set -e
 
-# Add /.local to path
-export PATH=$PATH:/.local/bin
+VENV_PATH=/.local/venv
+
+PIP="$VENV_PATH/bin/pip"
+PIP_INSTALL="$VENV_PATH/bin/pip install -U"
+
+echo "-- Creating virtualenv"
+python3 -m venv --system-site-packages $VENV_PATH
 
 echo "Installing required packages..."
-pip3 install -q -U --prefer-binary --user -r tests/requirements.txt
+$PIP_INSTALL -q --prefer-binary -r tests/requirements.txt
 
 # Disable qDebug stuff that bloats test outputs
 export QT_LOGGING_RULES="*.debug=false;*.warning=false"
@@ -16,6 +21,5 @@ export QGIS_DISABLE_MESSAGE_HOOKS=1
 export QGIS_NO_OVERRIDE_IMPORT=1
 
 cd tests
-
-py.test -v --qgis-plugins=/src $@
+exec $VENV_PATH/bin/pytest -v --qgis-plugins=/src $@ 
 
