@@ -7,12 +7,6 @@ import sys
 import lxml.etree
 import pytest
 
-logging.basicConfig( stream=sys.stderr )
-logging.disable(logging.NOTSET)
-
-LOGGER = logging.getLogger('server')
-LOGGER.setLevel(logging.DEBUG)
-
 from typing import Any, Dict, Generator
 
 from qgis.core import Qgis, QgsApplication, QgsFontUtils, QgsProject
@@ -31,6 +25,7 @@ def pytest_addoption(parser):
 
 plugin_path = None
 
+LOGGER = logging.getLogger('server')
 
 def pytest_configure(config):
     global plugin_path
@@ -197,7 +192,7 @@ def find_plugins(pluginpath: str) -> Generator[str,None,None]:
             with open(metadatafile, mode='rt') as f:
                 cp.read_file(f)
             if not cp['general'].getboolean('server'):
-                logging.critical("%s is not a server plugin", plugin)
+                LOGGER.critical("%s is not a server plugin", plugin)
                 continue
 
             minver = cp['general'].get('qgisMinimumVersion')

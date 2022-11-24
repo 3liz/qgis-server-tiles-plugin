@@ -1,6 +1,4 @@
-""" QGIS server plugin filter - Cache WMTS output on disk
-
-    Qgis API utils utils
+""" Qgis API utils utils
 
     author: David Marteau (3liz)
     Copyright: (C) 2019 3Liz
@@ -10,12 +8,12 @@ import sys
 import traceback
 
 from http.client import responses as http_responses
-from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Type, Union
 
-from qgis.core import Qgis, QgsMessageLog
+from qgis.core import Qgis, QgsMessageLog, QgsProject
 from qgis.PyQt.QtCore import QRegularExpression, QUrl
 from qgis.server import (
+    QgsServerInterface,
     QgsServerOgcApi,
     QgsServerOgcApiHandler,
     QgsServerRequest,
@@ -62,13 +60,25 @@ class RequestHandler:
         """
         """
         if self._project_needed and not self._project:
-            raise HTTPError(500, 'Project file error. For Tiles API, please provide a MAP parameter pointing to a valid QGIS project file')
+            raise HTTPError(400, reason='Project file error. For Tiles API, please provide a MAP parameter pointing to a valid QGIS project file')
 
     def href(self, path: str="", extension: str="") -> str:
         """ Returns an URL to self, to be used for links to the current resources
             and as a base for constructing links to sub-resources
         """
         return self._parent.href(self._context,path,extension)
+
+    @property
+    def project(self) -> Optional[QgsProject]:
+        """ Return the current project (or None)
+        """
+        return self._project
+
+    @property
+    def server_interface(self) -> QgsServerInterface:
+        """ Retrun the server interface
+        """
+        return self._context.serverInterface()
 
     def finish(self, chunk: Optional[Union[str, bytes, dict]] = None) -> None:
         """ Terminate the request
@@ -89,7 +99,7 @@ class RequestHandler:
             raise TypeError("write() only accepts bytes, unicode, and dict objects")
         if isinstance(chunk, dict):
             chunk = json.dumps(chunk, sort_keys=True)
-        self.set_header('Content-Type', 'application/json;charset=utf-8')
+            self.set_header('Content-Type', 'application/json;charset=utf-8')
         self._response.write(chunk)
 
     def set_status(self, status_code: int, reason: Optional[str]=None) -> None:
@@ -108,15 +118,17 @@ class RequestHandler:
         reason = kwargs.get("reason")
         if "exc_info" in kwargs:
             exception = kwargs["exc_info"][1]
-            if isinstance(exception, HTTPError) and exception.reason:
-                reason = exception.reason
+            if isinstance(exception, HTTPError):
+                if status_code >= 500:
+                    QgsMessageLog.logMessage(f"{exception}", "tilesApi", Qgis.Critical)
+                if status_code >= 400:
+                    QgsMessageLog.logMessage(f"{exception}", "tilesApi", Qgis.Warning)
+                if exception.reason:
+                    reason = exception.reason
         self.set_status(status_code, reason=reason)
         self.write(dict(status="error" if status_code != 200 else "ok",
                         httpcode = status_code,
                         error    = { "message": self._reason }))
-
-        if status_code > 300:
-            QgsMessageLog.logMessage(f"Returned HTTP Error {status_code}: {self._reason}" , "tilesApi",Qgis.Critical)
 
         if not self._finished:
             self.finish()
