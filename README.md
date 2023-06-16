@@ -2,7 +2,7 @@
 
 Add tiles API to QGIS Server
 * Tiles Map Service API
-* OGC Tiles API
+* OGC Tiles API (in progress)
 
 ## Tile Map Service API - TMS
 
