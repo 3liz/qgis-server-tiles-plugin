@@ -2,8 +2,7 @@ import tempfile
 
 from pathlib import Path
 
-from qgis.core import (
-    # QgsVectorTileMVTEncoder, #define SIP_NO_FILE
+from qgis.core import (  # QgsVectorTileMVTEncoder, #define SIP_NO_FILE
     Qgis,
     QgsCoordinateReferenceSystem,
     QgsCoordinateTransform,

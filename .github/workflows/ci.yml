@@ -68,8 +68,8 @@ jobs:
           -v ${GITHUB_WORKSPACE}/.local:/.local
           3liz/qgis-platform:3.22
           ./tests/run-tests.sh
-
-      - name: Running Qgis 3.26 tests
+ 
+      - name: Running Qgis 3.28 tests
         run: >-
           docker run
           --rm
@@ -81,8 +81,39 @@ jobs:
           -e PYTEST_ADDOPTS=""
           -v ${GITHUB_WORKSPACE}:/src
           -v ${GITHUB_WORKSPACE}/.local:/.local
-          3liz/qgis-platform:3.26
+          3liz/qgis-platform:3.28
           ./tests/run-tests.sh
+
+      - name: Running Qgis 3.34 tests
+        run: >-
+          docker run
+          --rm
+          --name qgis-server
+          -u $(id -u)
+          -v ${GITHUB_WORKSPACE}/.cache:/.cache
+          -e PIP_CACHE_DIR=/.cache
+          -w /src
+          -e PYTEST_ADDOPTS=""
+          -v ${GITHUB_WORKSPACE}:/src
+          -v ${GITHUB_WORKSPACE}/.local:/.local
+          3liz/qgis-platform:3.34
+          ./tests/run-tests.sh
+
+      - name: Running Qgis 3.40 tests
+        run: >-
+          docker run
+          --rm
+          --name qgis-server
+          -u $(id -u)
+          -v ${GITHUB_WORKSPACE}/.cache:/.cache
+          -e PIP_CACHE_DIR=/.cache
+          -w /src
+          -e PYTEST_ADDOPTS=""
+          -v ${GITHUB_WORKSPACE}:/src
+          -v ${GITHUB_WORKSPACE}/.local:/.local
+          3liz/qgis-platform:3.40
+          ./tests/run-tests.sh
+
 
   release:
     needs: [test-server]

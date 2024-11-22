@@ -4,10 +4,10 @@ import logging
 import os
 import sys
 
+from typing import Any, Dict, Generator
+
 import lxml.etree
 import pytest
-
-from typing import Any, Dict, Generator
 
 from qgis.core import Qgis, QgsApplication, QgsFontUtils, QgsProject
 from qgis.server import (
