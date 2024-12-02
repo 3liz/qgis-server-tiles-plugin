@@ -66,7 +66,22 @@ class RequestHandler:
         """ Returns an URL to self, to be used for links to the current resources
             and as a base for constructing links to sub-resources
         """
-        return self._parent.href(self._context,path,extension)
+        return self._parent.href(self._context, path, extension)
+
+    def links(self) -> List[str]:
+        """Returns the self and alternate links for the given request
+           QgsServerOgcApiHandler::links not available in Python bindings
+        """
+        links = list()
+        current_ct = self._parent.contentTypeFromRequest(self._request)
+        for ct in self._parent.contentTypes():
+            links.append({
+                'href': self.href('', QgsServerOgcApi.contentTypeToExtension(ct) if ct != QgsServerOgcApi.JSON else ''),
+                'rel': QgsServerOgcApi.relToString(QgsServerOgcApi.self if ct == current_ct else QgsServerOgcApi.alternate),
+                "type": QgsServerOgcApi.mimeType(ct),
+                "title": self._parent.linkTitle()+' as '+QgsServerOgcApi.contentTypeToString(ct),
+            })
+        return links
 
     @property
     def project(self) -> Optional[QgsProject]:
@@ -203,14 +218,24 @@ class RequestHandlerDelegate(QgsServerOgcApiHandler):
                  kwargs: Dict={}):
 
         super().__init__()
+        # Defined default content types because
+        # QgsServerOgcApiHandler::contentTypes not available in Python bindings
+        self._content_types = [QgsServerOgcApi.JSON, QgsServerOgcApi.HTML]
         if content_types:
             self.setContentTypes(content_types)
+            self._content_types = content_types
         self._path = QRegularExpression(path)
         self._name = handler.__name__
         self._handler = handler
         self._kwargs = kwargs
 
         self.__instances.append(self)
+
+    def contentTypes(self):
+        """ Returns the list of content types this handler can serve, default to JSON and HTML.
+            QgsServerOgcApiHandler::contentTypes not available in Python bindings
+        """
+        return self._content_types
 
     def path(self):
         return self._path
